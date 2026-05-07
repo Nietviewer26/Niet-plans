@@ -1,0 +1,13 @@
+# SQLite database (ephemeral on Streamlit Cloud — see README)
+agency.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtualenv
+.venv/
+
+# Environment
+.env
