@@ -112,8 +112,8 @@ def _launch_campaign(client: dict, pending: dict) -> None:
     st.success(f"Campaign launched! External ID: `{result.external_id}`")
 
 
-def _get_audience(client: dict, template: tmpl.CampaignTemplate | None) -> str:
-    if client.get("target_audience"):
+def _get_audience(client, template: tmpl.CampaignTemplate | None) -> str:
+    if client["target_audience"]:
         return client["target_audience"]
     if template and template.audience_hint:
         return template.audience_hint
