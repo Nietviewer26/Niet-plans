@@ -34,12 +34,41 @@ def get_email_provider(name: str) -> EmailProvider:
     return _email_providers[name]
 
 
+def has_real_anthropic_key() -> bool:
+    """Public helper for UI code: is a usable Anthropic API key configured?"""
+    return _looks_like_real_anthropic_key(os.environ.get("ANTHROPIC_API_KEY"))
+
+
+def _looks_like_real_anthropic_key(key: str | None) -> bool:
+    """Reject empties, whitespace, and obvious placeholders.
+
+    Real Anthropic keys start with ``sk-ant-`` and don't contain ellipsis
+    or template markers like ``your-key``. We deliberately accept any
+    ``sk-ant-`` prefix (api01/api03/etc.) so older/newer key formats
+    keep working.
+    """
+    if not key:
+        return False
+    k = key.strip()
+    if not k:
+        return False
+    if "…" in k or "..." in k:
+        return False
+    placeholder_markers = ("your-real-key", "your-key", "<", "xxxx", "placeholder")
+    lower = k.lower()
+    if any(marker in lower for marker in placeholder_markers):
+        return False
+    return k.startswith("sk-ant-")
+
+
 def get_llm(name: str = "anthropic") -> LLMProvider:
     if name not in _llm_providers:
         if name == "anthropic":
-            # Fall back to MockLLMProvider when no API key is configured so
-            # the platform demos end-to-end without a billing account.
-            if os.environ.get("ANTHROPIC_API_KEY"):
+            # Fall back to MockLLMProvider when no real API key is configured
+            # so the platform demos end-to-end without a billing account.
+            # Placeholder values (e.g. the literal example from the README)
+            # are treated as unset.
+            if _looks_like_real_anthropic_key(os.environ.get("ANTHROPIC_API_KEY")):
                 from adapters import AnthropicLLMProvider
                 _llm_providers[name] = AnthropicLLMProvider()
             else:

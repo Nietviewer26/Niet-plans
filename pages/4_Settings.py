@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import database
+import services
 
 # ---------------------------------------------------------------------------
 # Page setup
@@ -27,7 +28,7 @@ tab_vendors, tab_brand, tab_usage = st.tabs(["Vendors", "White-label", "API usag
 with tab_vendors:
     st.subheader("Provider status")
 
-    has_anthropic_key = bool(os.environ.get("ANTHROPIC_API_KEY"))
+    has_anthropic_key = services.has_real_anthropic_key()
 
     providers = [
         {
