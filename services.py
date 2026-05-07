@@ -4,6 +4,8 @@ Pages call get_*() functions; they never instantiate adapters directly.
 """
 from __future__ import annotations
 
+import os
+
 from interfaces import AdPlatform, EmailProvider, LLMProvider, MediaGenerator
 
 _ad_platforms: dict[str, AdPlatform] = {}
@@ -35,8 +37,17 @@ def get_email_provider(name: str) -> EmailProvider:
 def get_llm(name: str = "anthropic") -> LLMProvider:
     if name not in _llm_providers:
         if name == "anthropic":
-            from adapters import AnthropicLLMProvider
-            _llm_providers[name] = AnthropicLLMProvider()
+            # Fall back to MockLLMProvider when no API key is configured so
+            # the platform demos end-to-end without a billing account.
+            if os.environ.get("ANTHROPIC_API_KEY"):
+                from adapters import AnthropicLLMProvider
+                _llm_providers[name] = AnthropicLLMProvider()
+            else:
+                from adapters import MockLLMProvider
+                _llm_providers[name] = MockLLMProvider()
+        elif name == "mock":
+            from adapters import MockLLMProvider
+            _llm_providers[name] = MockLLMProvider()
         else:
             raise ValueError(f"Unknown LLM provider: {name!r}")
     return _llm_providers[name]

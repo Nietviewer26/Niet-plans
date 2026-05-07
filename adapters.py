@@ -118,6 +118,147 @@ class MockKlaviyoEmailProvider(EmailProvider):
 
 
 # ---------------------------------------------------------------------------
+# MockLLMProvider
+# ---------------------------------------------------------------------------
+
+class MockLLMProvider(LLMProvider):
+    """Deterministic templated copy. No external API calls.
+
+    Used as a fallback when ANTHROPIC_API_KEY is not set so the platform
+    can demo end-to-end without a billing account. Output is hash-seeded
+    on the request, so identical inputs produce identical variants.
+    """
+
+    name = "mock"
+
+    _ANGLE_HEADLINES: dict[str, list[str]] = {
+        "scarcity": [
+            "Only a Few Left — Don't Wait",
+            "Ends Midnight Sunday",
+            "Last Chance Before They're Gone",
+            "Limited Stock — Order Today",
+        ],
+        "social proof": [
+            "Loved by Thousands of Customers",
+            "Rated 4.9 Stars by Real Buyers",
+            "Join the Community That's Switching",
+            "Why Pros Choose Us First",
+        ],
+        "education": [
+            "What Most People Get Wrong",
+            "The Honest Guide You Deserve",
+            "Skip the Hype — Read This First",
+            "Everything Explained, Plainly",
+        ],
+        "FOMO": [
+            "Everyone's Talking — Are You In?",
+            "Don't Miss This Window",
+            "The One You'll Wish You Had",
+            "Catch Up Before It's Sold Out",
+        ],
+        "story / origin": [
+            "Why We Started This",
+            "From a Small Idea to Yours",
+            "The Story Behind Every Order",
+            "How It All Began",
+        ],
+        "authority": [
+            "Built by the People Who Know",
+            "Trusted Where It Counts",
+            "The Standard for Serious Buyers",
+            "Engineered by Specialists",
+        ],
+        "curiosity": [
+            "The Detail Everyone Misses",
+            "What Changes When You Try It",
+            "A Quieter Way to Get There",
+            "One Small Shift, Everything Better",
+        ],
+    }
+
+    _CTAS: list[str] = [
+        "Shop Now",
+        "Get Yours",
+        "Try Today",
+        "Learn More",
+        "Start Now",
+        "Order Today",
+        "See Details",
+    ]
+
+    def __init__(self, model: str = "mock-templated-v1"):
+        self._model = model
+        self.last_usage: dict = {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cost_cents": 0,
+        }
+
+    def _seeded_rng(self, *parts: str) -> random.Random:
+        seed_hex = hashlib.md5("|".join(parts).encode()).hexdigest()
+        return random.Random(int(seed_hex, 16) % (2**31))
+
+    def _truncate(self, text: str, limit: int) -> str:
+        text = text.strip()
+        if len(text) <= limit:
+            return text
+        return text[: max(0, limit - 1)].rstrip() + "…"
+
+    def generate_copy(self, req: CopyRequest) -> list[CopyVariant]:
+        rng = self._seeded_rng(req.brand_voice, req.target_audience, req.product, req.angle)
+        headlines_pool = self._ANGLE_HEADLINES.get(
+            req.angle, self._ANGLE_HEADLINES["social proof"]
+        )
+
+        # Take the first sentence of the product description as the body anchor.
+        product_anchor = re.split(r"[.!?\n]", req.product.strip(), maxsplit=1)[0].strip()
+        if not product_anchor:
+            product_anchor = req.product.strip() or "our latest release"
+
+        variants: list[CopyVariant] = []
+        used_headlines: set[str] = set()
+        for i in range(req.n_variants):
+            # Pick a headline; rotate through the pool to avoid collisions.
+            for _ in range(8):
+                hl = rng.choice(headlines_pool)
+                if hl not in used_headlines:
+                    used_headlines.add(hl)
+                    break
+            headline = self._truncate(hl, 40)
+
+            # Body: a short sentence stitched from the product anchor + audience cue.
+            audience_short = req.target_audience.split(",")[0].strip() or "you"
+            body_options = [
+                f"For {audience_short.lower()}: {product_anchor}.",
+                f"{product_anchor}. Made with {audience_short.lower()} in mind.",
+                f"{product_anchor} — see why people keep coming back.",
+                f"{product_anchor}. No fluff, no filler.",
+            ]
+            body = self._truncate(rng.choice(body_options), 125)
+
+            cta = rng.choice(self._CTAS)
+            variants.append(CopyVariant(headline=headline, body=body, cta=cta))
+
+        return variants
+
+    def generate_subject_lines(
+        self, brand_voice: str, body_summary: str, n: int = 5
+    ) -> list[str]:
+        rng = self._seeded_rng(brand_voice, body_summary, "subjects")
+        templates = [
+            "Quick one for you",
+            "We made this with you in mind",
+            "Something worth your time",
+            "A small update — and a thank you",
+            "Open if you've got 30 seconds",
+            "The thing we've been working on",
+            "Your shortlist, refreshed",
+        ]
+        rng.shuffle(templates)
+        return templates[:n]
+
+
+# ---------------------------------------------------------------------------
 # AnthropicLLMProvider
 # ---------------------------------------------------------------------------
 

@@ -1,6 +1,6 @@
 # Agency Platform V3
 
-**Deployed at:** _<fill in after Streamlit Cloud deploy>_
+**Deployed at:** https://niet-plans.streamlit.app
 
 An architectural slice of a production AI marketing agency platform.
 Every layer talks end-to-end; one minimum-viable feature per layer.
@@ -10,9 +10,11 @@ Every layer talks end-to-end; one minimum-viable feature per layer.
 ## Deployment notes (Streamlit Community Cloud)
 
 - Entry point is `app.py` at the repo root.
-- Set `ANTHROPIC_API_KEY` in **Advanced settings → Secrets** when creating
-  the app. Without it, copy generation will fail (Settings → Vendors will
-  show the Anthropic provider as 🔴 broken).
+- Set `ANTHROPIC_API_KEY` in **Advanced settings → Secrets** to use real
+  Claude. Without it, the platform automatically falls back to
+  `MockLLMProvider` — deterministic templated ad copy, no API calls,
+  shown as 🟡 mock in Settings → Vendors. This lets the full app demo
+  end-to-end without a billing account.
 - **`agency.db` is ephemeral.** Streamlit Community Cloud has no persistent
   disk — the SQLite file is recreated (and re-seeds the demo client) on
   every container restart. Any clients, campaigns, or generations created

@@ -43,13 +43,14 @@ with tab_vendors:
             "detail": "MockKlaviyoEmailProvider — hash-seeded metrics, no real sends.",
         },
         {
-            "name": "Anthropic Claude",
+            "name": "Anthropic Claude" if has_anthropic_key else "LLM (mock fallback)",
             "kind": "LLM Provider",
-            "status": "real" if has_anthropic_key else "broken",
+            "status": "real" if has_anthropic_key else "mock",
             "detail": (
                 "Real Anthropic adapter — API calls using claude-sonnet-4-6."
                 if has_anthropic_key
-                else "ANTHROPIC_API_KEY not set — copy generation will fail."
+                else "MockLLMProvider — deterministic templated copy, no API calls. "
+                     "Set ANTHROPIC_API_KEY in Streamlit secrets to switch to real Claude."
             ),
         },
         {
